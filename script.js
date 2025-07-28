@@ -1,45 +1,97 @@
-function validateCard() {
-    var cardNumber = document.getElementById("cardNumber").value;
-    var cardTranslation = {'-': '', ' ': ''};
-    var translatedCardNumber = translateCardNumber(cardNumber, cardTranslation);
+// Real-time card formatting
+document.getElementById('cardNumber').addEventListener('input', function(e) {
+    // Remove all non-digit characters
+    let value = e.target.value.replace(/\D/g, '');
+    
+    // Add hyphens for better readability (every 4 digits)
+    let formatted = '';
+    for (let i = 0; i < value.length; i++) {
+        if (i > 0 && i % 4 === 0) {
+            formatted += '-';
+        }
+        formatted += value[i];
+    }
+    
+    // Update the input field
+    e.target.value = formatted;
+});
 
-    if (verifyCardNumber(translatedCardNumber)) {
-        document.getElementById("result").innerText = "VALID!";
+function validateCard() {
+    const cardNumber = document.getElementById('cardNumber').value;
+    const cleanedNumber = cardNumber.replace(/\D/g, ''); // Remove non-digits
+    
+    // Check if empty
+    if (!cleanedNumber) {
+        document.getElementById('result').innerText = 'Please enter a card number';
+        document.getElementById('result').className = 'invalid';
+        return;
+    }
+
+    // Check if length is valid (13-19 digits)
+    if (cleanedNumber.length < 13 || cleanedNumber.length > 19) {
+        document.getElementById('result').innerText = 'INVALID! (Wrong length)';
+        document.getElementById('result').className = 'invalid';
+        return;
+    }
+
+    // Luhn validation
+    const isValid = verifyCardNumber(cleanedNumber);
+    const issuer = detectCardIssuer(cleanedNumber);
+
+    const resultElement = document.getElementById('result');
+    if (isValid) {
+        resultElement.innerHTML = `VALID! <span class="issuer">${issuer}</span>`;
+        resultElement.className = 'valid';
     } else {
-        document.getElementById("result").innerText = "INVALID!";
+        resultElement.innerText = 'INVALID!';
+        resultElement.className = 'invalid';
     }
 }
 
-function translateCardNumber(cardNumber, translation) {
-    return cardNumber.replace(/[- ]/g, function(match) {
-        return translation[match];
-    });
+function verifyCardNumber(cardNumber) {
+    let sum = 0;
+    let alternate = false;
+    
+    for (let i = cardNumber.length - 1; i >= 0; i--) {
+        let digit = parseInt(cardNumber.charAt(i), 10);
+        
+        if (alternate) {
+            digit *= 2;
+            if (digit > 9) {
+                digit -= 9;
+            }
+        }
+        
+        sum += digit;
+        alternate = !alternate;
+    }
+    
+    return sum % 10 === 0;
 }
 
-function verifyCardNumber(cardNumber) {
-    var sumOfOddDigits = 0;
-    var cardNumberReversed = cardNumber.split('').reverse().join('');
-    var oddDigits = cardNumberReversed.split('').filter(function(_, index) {
-        return index % 2 === 0;
-    });
-
-    oddDigits.forEach(function(digit) {
-        sumOfOddDigits += parseInt(digit, 10);
-    });
-
-    var sumOfEvenDigits = 0;
-    var evenDigits = cardNumberReversed.split('').filter(function(_, index) {
-        return index % 2 === 1;
-    });
-
-    evenDigits.forEach(function(digit) {
-        var number = parseInt(digit, 10) * 2;
-        if (number >= 10) {
-            number = Math.floor(number / 10) + (number % 10);
-        }
-        sumOfEvenDigits += number;
-    });
-
-    var total = sumOfOddDigits + sumOfEvenDigits;
-    return total % 10 === 0;
+function detectCardIssuer(cardNumber) {
+    const firstDigit = cardNumber.charAt(0);
+    const firstTwoDigits = cardNumber.substring(0, 2);
+    
+    // Visa
+    if (firstDigit === '4') return 'Visa';
+    
+    // Mastercard
+    if (firstTwoDigits >= '51' && firstTwoDigits <= '55') return 'Mastercard';
+    
+    // American Express
+    if (firstTwoDigits === '34' || firstTwoDigits === '37') return 'American Express';
+    
+    // Discover
+    if (firstTwoDigits === '65' || firstFourDigits === '6011' || 
+        (firstThreeDigits >= '644' && firstThreeDigits <= '649')) return 'Discover';
+    
+    // Diners Club
+    if (firstTwoDigits === '36' || firstTwoDigits === '38' || 
+        (firstTwoDigits >= '30' && firstTwoDigits <= '30')) return 'Diners Club';
+    
+    // JCB
+    if (firstTwoDigits === '35') return 'JCB';
+    
+    return 'Unknown issuer';
 }
